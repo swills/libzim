@@ -64,7 +64,7 @@ namespace zim
           ns('\0')
       {}
 
-      Dirent(std::unique_ptr<Buffer> buffer);
+      explicit Dirent(std::unique_ptr<Buffer> buffer);
 
       bool isRedirect() const                 { return mimeType == redirectMimeType; }
       bool isLinktarget() const               { return mimeType == linktargetMimeType; }
