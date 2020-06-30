@@ -61,22 +61,26 @@ namespace
 class TempFile
 {
   int fd_;
+#ifndef _WIN32
   std::string path_;
+#endif
 public:
-  TempFile()
+  explicit TempFile(const char* name)
   {
 #ifdef _WIN32
+    const int n = strlen(name);
     wchar_t cbase[MAX_PATH];
     wchar_t ctmp[MAX_PATH];
-    GetTempPathW(MAX_PATH-14, cbase);
+    wchar_t wname[MAX_PATH];
+    mbstowcs(wname, name, n+1);
+    GetTempPathW(MAX_PATH-(n+2), cbase);
     // This create a file for us, ensure it is unique.
     // So we need to delete it and create the directory using the same name.
-    GetTempFileNameW(cbase, L"test_cluster", 0, ctmp);
+    GetTempFileNameW(cbase, wname, 0, ctmp);
     auto tmp_fd = _wopen(ctmp, _O_CREAT | _O_TEMPORARY | _O_SHORT_LIVED | _O_RDWR | _O_TRUNC);
 #else
-    char tmpl[] = "/tmp/test_cluster_XXXXXX";
-    auto tmp_fd = mkstemp(tmpl);
-    path_ = tmpl;
+    path_ = std::string("/tmp/") + name + "_XXXXXX";
+    auto tmp_fd = mkstemp(&path_[0]);
 #endif
     fd_ = tmp_fd;
   }
@@ -95,7 +99,7 @@ public:
 
 std::shared_ptr<zim::Buffer> write_to_buffer(zim::writer::Cluster& cluster)
 {
-  TempFile tmpFile;
+  const TempFile tmpFile("test_cluster");
   cluster.close();
   const auto tmp_fd = tmpFile.fd();
   cluster.write(tmp_fd);
