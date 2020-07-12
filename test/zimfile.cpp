@@ -53,6 +53,35 @@ generateInvalidZimFile(int fd, std::string prefix, unsigned char byte, int n)
   write(fd, &body[0], n);
 }
 
+std::string
+emptyZimFileContent()
+{
+  std::string content;
+  content += "ZIM\x04"; // Magic
+  content += "\x05" + std::string(3, '\0'); // Version
+  content += std::string(16, '\0'); // uuid
+  content += std::string(4, '\0'); // article count
+  content += std::string(4, '\0'); // cluster count
+  content += "\x50" + std::string(7, '\0'); // url ptr pos
+  content += "\x50" + std::string(7, '\0'); // title ptr pos
+  content += "\x50" + std::string(7, '\0'); // cluster ptr pos
+  content += "\x50" + std::string(7, '\0'); // mimelist ptr pos
+  content += std::string(4, '\0'); // main page index
+  content += std::string(4, '\0'); // layout page index
+  content += "\x50" + std::string(7, '\0'); // checksum pos
+  content += "\x8a\xbb\xad\x98\x64\xd5\x48\xb2\xb9\x71\xab\x30\xed\x29\xa4\x01"; // md5sum
+  return content;
+}
+
+void
+generateEmptyZimFile(int fd)
+{
+  const std::string c = emptyZimFileContent();
+  write(fd, &c[0], c.size());
+  close(fd);
+}
+
+
 TEST(ZimFile, openingAnInvalidZimFileFails)
 {
   const char* const prefixes[] = { "ZIM\x04", "" };
@@ -72,6 +101,15 @@ TEST(ZimFile, openingAnInvalidZimFileFails)
       }
     }
   }
+}
+
+TEST(ZimFile, openingAnEmptyZimFileSucceeds)
+{
+  const TempFile tmpfile("empty_zim_file");
+  generateEmptyZimFile(tmpfile.fd());
+
+  zim::File zimfile(tmpfile.path());
+  ASSERT_TRUE(zimfile.verify());
 }
 
 } // unnamed namespace
