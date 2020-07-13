@@ -19,8 +19,6 @@
 
 #include "tempfile.h"
 
-#include <string>
-
 #ifdef _WIN32
 #include <codecvt>
 #include <windows.h>
@@ -52,23 +50,31 @@ TempFile::TempFile(const char* name)
   // This create a file for us, ensure it is unique.
   // So we need to delete it and create the directory using the same name.
   GetTempFileNameW(cbase, wname.c_str(), 0, ctmp);
-  auto tmp_fd = _wopen(ctmp, _O_CREAT | _O_TEMPORARY | _O_SHORT_LIVED | _O_RDWR | _O_TRUNC);
+  fd_ = _wopen(ctmp, _O_CREAT | _O_TEMPORARY | _O_SHORT_LIVED | _O_RDWR | _O_TRUNC);
   path_ = utfConv.to_bytes(ctmp);
 #else
   const char* const TMPDIR = std::getenv("TMPDIR");
   const std::string tmpdir(TMPDIR ? TMPDIR : "/tmp");
   path_ = tmpdir + "/" + name + "_XXXXXX";
-  auto tmp_fd = mkstemp(&path_[0]);
+  fd_ = mkstemp(&path_[0]);
 #endif
-  fd_ = tmp_fd;
 }
 
 TempFile::~TempFile()
 {
-  close(fd_);
+  if (fd_ != -1)
+    close();
 #ifndef _WIN32
   unlink(path_.c_str());
 #endif
+}
+
+void
+TempFile::close()
+{
+  assert(fd_ != -1);
+  ::close(fd_);
+  fd_ = -1;
 }
 
 } // namespace unittests

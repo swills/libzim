@@ -20,6 +20,7 @@
 #ifndef ZIM_TEST_TEMPFILE_H
 #define ZIM_TEST_TEMPFILE_H
 
+#include <cassert>
 #include <string>
 
 namespace zim
@@ -30,7 +31,7 @@ namespace unittests
 
 class TempFile
 {
-  int fd_;
+  int fd_ = -1;
   std::string path_;
 public:
   explicit TempFile(const char* name);
@@ -40,7 +41,9 @@ public:
 
   ~TempFile();
 
-  int fd() const { return fd_; }
+  void close();
+
+  int fd() const { assert(fd_ != -1); return fd_; }
   std::string path() const { return path_; }
 };
 
