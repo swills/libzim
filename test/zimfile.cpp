@@ -45,14 +45,6 @@ std::ostream& operator<<(std::ostream& out, const TestContext& ctx)
   return out;
 }
 
-void
-generateInvalidZimFile(int fd, std::string prefix, unsigned char byte, int n)
-{
-  write(fd, &prefix[0], prefix.size());
-  const std::string body(n, byte);
-  write(fd, &body[0], n);
-}
-
 std::string
 emptyZimFileContent()
 {
@@ -73,13 +65,16 @@ emptyZimFileContent()
   return content;
 }
 
-void
-generateEmptyZimFile(int fd)
+class TempZimFile : public TempFile
 {
-  const std::string c = emptyZimFileContent();
-  write(fd, &c[0], c.size());
-  close(fd);
-}
+public:
+  TempZimFile(const char* name, const std::string& content)
+    : TempFile(name)
+  {
+    write(fd(), &content[0], content.size());
+    close();
+  }
+};
 
 
 TEST(ZimFile, openingAnInvalidZimFileFails)
@@ -94,8 +89,8 @@ TEST(ZimFile, openingAnInvalidZimFileFails)
                 {"byte", std::to_string(byte) },
                 {"count", std::to_string(count) }
         };
-        const TempFile tmpfile("invalid_zim_file");
-        generateInvalidZimFile(tmpfile.fd(), prefix, byte, count);
+        const std::string zimfileContent = prefix + std::string(count, byte);
+        const TempZimFile tmpfile("invalid_zim_file", zimfileContent);
 
         EXPECT_THROW( zim::File(tmpfile.path()), std::runtime_error ) << ctx;
       }
@@ -105,8 +100,7 @@ TEST(ZimFile, openingAnInvalidZimFileFails)
 
 TEST(ZimFile, openingAnEmptyZimFileSucceeds)
 {
-  const TempFile tmpfile("empty_zim_file");
-  generateEmptyZimFile(tmpfile.fd());
+  const TempZimFile tmpfile("empty_zim_file", emptyZimFileContent());
 
   zim::File zimfile(tmpfile.path());
   ASSERT_TRUE(zimfile.verify());
